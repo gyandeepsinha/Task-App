@@ -1,5 +1,5 @@
-const jwt   =   require('jsonwebtoken');
-const {User}  =   require('../db/userModels');
+const jwt         =   require('jsonwebtoken');
+const { User }    =   require('../db/userModels');
 
 const auth  =   async (req, res, next) => {
     try{
@@ -13,6 +13,7 @@ const auth  =   async (req, res, next) => {
         req.user    =   user;
         next();
     }catch(error){
+        console.log('error :'+ error);
         res.status(401).send({error : 'User is not Authenticated!'})
     }
 }

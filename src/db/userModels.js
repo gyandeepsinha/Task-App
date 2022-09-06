@@ -2,6 +2,8 @@ const mongoose  =   require('mongoose');
 const validator =   require('validator');
 const bcrypt    =   require('bcrypt');
 const jwt       =   require('jsonwebtoken');
+const { task }  =   require('../db/taskModel');
+
 
 
 // User Collection Schema
@@ -31,18 +33,21 @@ const userSchema    =   mongoose.Schema({
     },
     tokens: [{
         token :{
-            type        :   String,
-            required    :   true
+            type     :   String,
+            required :   true
         }
-    }]
+    }],
+    avatar :{
+        type       :   Buffer
+    }
 }, {
     timestamps  :   true,
 });
-userSchema.virtual('tasks',{
-    ref             :'task',
-    localField      : '_id',
-    foreignField    : 'owner'
-});
+// userSchema.virtual('tasks',{
+//     ref             :'task',
+//     localField      : '_id',
+//     foreignField    : 'owner'
+// });
 // Sends User's Data After Removing Sensitive Data
 userSchema.methods.userProfile      =   function(){
     const user          =   this;

@@ -3,6 +3,8 @@ const { ObjectId }  =   require('mongodb');
 const { User }      =   require('../db/userModels');
 const auth          =   require('../middleware/auth');
 const multer        =   require('multer');
+const sharp         =   require('sharp');
+const {sendWelcomeEmail, sendDeleteEmail}  =   require('../account');
 const router        =   new express.Router();
 
 // Add User API
@@ -10,6 +12,7 @@ router.post('/addUser', async (req, res) => {
     const userDetails = new User(req.body);
     try {
         await userDetails.save();
+        sendWelcomeEmail(userDetails.email, userDetails.name);
         const token         =   await userDetails.generateAuthToken();
         res.status(201).send({userDetails, token});
     }catch(error){
@@ -69,6 +72,7 @@ router.patch('/updateUserById/me', auth ,async(req, res) => {
 router.delete('/deleteUserById/me', auth ,async(req, res) =>{
     try{
         await req.user.remove();
+        sendDeleteEmail(req.user.email, req.user.name);
         res.status(200).send(req.user.userProfile());
     }catch(error){
         console.log('error'+ error);
@@ -109,11 +113,43 @@ router.post('/users/logoutAll', auth , async(req, res) => {
     }
 });
 const upload    =   multer({
-    dest        :   'Images'
+    limits      :   {
+        fileSize    :   1000000
+    },
+    fileFilter(req, file, cb){
+        if(!file.originalname.match(/\.(jpg|jpeg|png)$/)){
+            return cb(new Error('Please Upload Image Only!'))
+        }
+        cb(undefined, true);
+    }
 });
 // Upload User's Profile Picture
-router.post('/users/me/avatar', upload.single('avatar'), async(req, res) => {
-    res.status(200).send({message   : 'File Uploaded!'});
+router.post('/users/me/avatar', auth ,upload.single('avatar'), async(req, res) => {
+    const buffer    =   await sharp(req.file.buffer).resize({width :250, height: 250}).png().toBuffer();
+    req.user.avatar =   buffer;
+    await req.user.save();    
+    res.send(req.user);
+},(error, req, res, next)=>{
+    res.status(400).send({error : error.message});
+});
+// Delete User's Avatar
+router.delete('/users/me/avatar', auth ,async(req, res) => {
+    req.user.avatar = undefined;
+    await req.user.save();
+    res.status(200).send({message : 'Avatar is deleted!'});
+});
+// Avatar Profile Pic By UserId
+router.get('/users/:id/avatar', async(req, res) =>{
+    try{
+        const user  =   await User.findById(req.params.id);
+        if(!user || !user.avatar) {
+            throw new Error()
+        }
+        res.set('Content-Type', 'image/png');
+        res.status(200).send(user.avatar);
+    }catch(error){
+        res.status(404).send({error: 'User Not Found'});
+    }
 });
 
 module.exports  =   router;
